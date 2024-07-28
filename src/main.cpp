@@ -59,31 +59,6 @@ namespace vk_platform {
     }
 }
 
-VkResult CreateDebugUtilsMessengerEXT(
-    VkInstance instance,
-    const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
-    VkDebugUtilsMessengerEXT* pDebugMessenger
-) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void DestroyDebugUtilsMessengerEXT(
-    VkInstance instance,
-    VkDebugUtilsMessengerEXT debugMessenger,
-    const VkAllocationCallbacks* pAllocator
-) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
-
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
@@ -190,6 +165,31 @@ class App {
             return true;
         }
 
+        static VkResult CreateDebugUtilsMessengerEXT(
+            VkInstance instance,
+            const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+            const VkAllocationCallbacks* pAllocator,
+            VkDebugUtilsMessengerEXT* pDebugMessenger
+        ) {
+            auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+            if (func != nullptr) {
+                return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+            } else {
+                return VK_ERROR_EXTENSION_NOT_PRESENT;
+            }
+        }
+
+        static void DestroyDebugUtilsMessengerEXT(
+            VkInstance instance,
+            VkDebugUtilsMessengerEXT debugMessenger,
+            const VkAllocationCallbacks* pAllocator
+        ) {
+            auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            if (func != nullptr) {
+                func(instance, debugMessenger, pAllocator);
+            }
+        }
+
         static const std::string& messageSeverityToString(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity) {
             static const std::string MESSAGE_SEVERITY_INFO  = std::string { "INFO " };
             static const std::string MESSAGE_SEVERITY_WARN  = std::string { "WARN " };
@@ -292,7 +292,7 @@ class App {
                 const auto createInfo = this->createDebugMessengerCreateInfo();
 
                 auto debugMessenger = VkDebugUtilsMessengerEXT {};
-                const auto result = CreateDebugUtilsMessengerEXT(m_instance, &createInfo, nullptr, &debugMessenger);
+                const auto result = App::CreateDebugUtilsMessengerEXT(m_instance, &createInfo, nullptr, &debugMessenger);
                 if (result != VK_SUCCESS) {
                     throw std::runtime_error("failed to set up debug messenger!");
                 }
@@ -673,7 +673,7 @@ class App {
             vkDestroyDevice(m_device, nullptr);
 
             if (ENABLE_VALIDATION_LAYERS) {
-                DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
+                App::DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
             }
 
             vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
