@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -176,13 +177,28 @@ class App {
             return true;
         }
 
+        static const std::string& messageSeverityToString(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity) {
+            static const std::string MESSAGE_SEVERITY_INFO  = std::string { "INFO " };
+            static const std::string MESSAGE_SEVERITY_WARN  = std::string { "WARN " };
+            static const std::string MESSAGE_SEVERITY_ERROR = std::string { "ERROR" };
+
+            if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+                return MESSAGE_SEVERITY_ERROR;
+            } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+                return MESSAGE_SEVERITY_WARN;
+            } else {
+                return MESSAGE_SEVERITY_INFO;
+            }
+        }
+
         static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageType, 
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
             const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
             void* pUserData
         ) {
-            std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+            auto messageSeverityString = App::messageSeverityToString(messageSeverity);
+            fmt::println(std::cerr, "[{}] {}", messageSeverityString, pCallbackData->pMessage);
 
             return VK_FALSE;
         }
@@ -221,8 +237,8 @@ class App {
             const auto requiredExtensions = this->getRequiredExtensions();
             const auto flags = (VkInstanceCreateFlags {}) | VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
             
-            auto debugCreateInfo = this->createDebugMessengerCreateInfo();
-            const auto debugCreateInfoPtr = [&debugCreateInfo]() -> VkDebugUtilsMessengerCreateInfoEXT* {
+            const auto debugCreateInfo = this->createDebugMessengerCreateInfo();
+            const auto debugCreateInfoPtr = [&debugCreateInfo]() -> const VkDebugUtilsMessengerCreateInfoEXT* {
                 if (ENABLE_VALIDATION_LAYERS) {
                     return &debugCreateInfo;
                 } else {
@@ -257,7 +273,7 @@ class App {
 
         void setupDebugMessenger() {
             if (ENABLE_VALIDATION_LAYERS) {
-                auto createInfo = this->createDebugMessengerCreateInfo();
+                const auto createInfo = this->createDebugMessengerCreateInfo();
 
                 const auto result = CreateDebugUtilsMessengerEXT(m_instance, &createInfo, nullptr, &m_debugMessenger);
                 if (result != VK_SUCCESS) {
@@ -411,8 +427,14 @@ class App {
                 throw std::runtime_error("failed to create logical device!");
             }
 
-            vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
-            vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &m_presentQueue);
+            auto graphicsQueue = VkQueue {};
+            vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+            
+            auto presentQueue = VkQueue {};
+            vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &presentQueue);
+
+            m_graphicsQueue = graphicsQueue;
+            m_presentQueue = presentQueue;
         }
 
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {
