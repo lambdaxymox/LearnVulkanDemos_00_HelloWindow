@@ -16,6 +16,7 @@
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
@@ -37,6 +38,7 @@ const bool ENABLE_VALIDATION_LAYERS = true;
 #endif
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+
 
 namespace vk_platform {
     enum class Platform {
