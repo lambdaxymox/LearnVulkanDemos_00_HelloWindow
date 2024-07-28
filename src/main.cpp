@@ -103,7 +103,8 @@ struct SwapChainSupportDetails {
 class App {
     public:
         void run() {
-            this->initWindow();
+            this->createGLFWLibrary();
+            this->createWindow();
             this->initVulkan();
             this->mainLoop();
             this->cleanup();
@@ -124,6 +125,18 @@ class App {
         VkFormat m_swapChainImageFormat;
         VkExtent2D m_swapChainExtent;
         std::vector<VkImageView> m_swapChainImageViews;
+        
+        
+        void createGLFWLibrary() {
+            const auto result = glfwInit();
+            if (!result) {
+                glfwTerminate();
+
+                auto errorMessage = std::string { "Failed to initialize GLFW" };
+
+                throw std::runtime_error { errorMessage };
+            }
+        }
 
         void enumerateExtensions() {
             uint32_t extensionCount = 0;
@@ -265,28 +278,37 @@ class App {
                 .pNext = debugCreateInfoPtr,
             };
 
-            const auto result = vkCreateInstance(&createInfo, nullptr, &m_instance);
+            auto instance = VkInstance {};
+            const auto result = vkCreateInstance(&createInfo, nullptr, &instance);
             if (result != VK_SUCCESS) {
                 throw std::runtime_error("failed to create instance!");
             }
+
+            m_instance = instance;
         }
 
         void setupDebugMessenger() {
             if (ENABLE_VALIDATION_LAYERS) {
                 const auto createInfo = this->createDebugMessengerCreateInfo();
 
-                const auto result = CreateDebugUtilsMessengerEXT(m_instance, &createInfo, nullptr, &m_debugMessenger);
+                auto debugMessenger = VkDebugUtilsMessengerEXT {};
+                const auto result = CreateDebugUtilsMessengerEXT(m_instance, &createInfo, nullptr, &debugMessenger);
                 if (result != VK_SUCCESS) {
                     throw std::runtime_error("failed to set up debug messenger!");
                 }
+
+                m_debugMessenger = debugMessenger;
             }
         }
 
         void createSurface() {
-            const auto result = glfwCreateWindowSurface(m_instance, m_window, nullptr, &m_surface);
+            auto surface = VkSurfaceKHR {};
+            const auto result = glfwCreateWindowSurface(m_instance, m_window, nullptr, &surface);
             if (result != VK_SUCCESS) {
                 throw std::runtime_error("failed to create window surface!");
             }
+
+            m_surface = surface;
         }
 
         bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
@@ -352,26 +374,29 @@ class App {
         }
 
         void selectPhysicalDevice() {
-            uint32_t deviceCount = 0;
-            vkEnumeratePhysicalDevices(m_instance, &deviceCount, nullptr);
+            uint32_t physicalDeviceCount = 0;
+            vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, nullptr);
 
-            if (deviceCount == 0) {
+            if (physicalDeviceCount == 0) {
                 throw std::runtime_error("failed to find GPUs with Vulkan support!");
             }
 
-            auto devices = std::vector<VkPhysicalDevice> { deviceCount };
-            vkEnumeratePhysicalDevices(m_instance, &deviceCount, devices.data());
+            auto physicalDevices = std::vector<VkPhysicalDevice> { physicalDeviceCount };
+            vkEnumeratePhysicalDevices(m_instance, &physicalDeviceCount, physicalDevices.data());
 
-            for (const auto& device : devices) {
-                if (this->isPhysicalDeviceSuitable(device)) {
-                    m_physicalDevice = device;
+            auto selectedPhysicalDevice = VkPhysicalDevice {};
+            for (const auto& physicalDevice : physicalDevices) {
+                if (this->isPhysicalDeviceSuitable(physicalDevice)) {
+                    selectedPhysicalDevice = physicalDevice;
                     break;
                 }
             }
 
-            if (m_physicalDevice == VK_NULL_HANDLE) {
+            if (selectedPhysicalDevice == VK_NULL_HANDLE) {
                 throw std::runtime_error("failed to find a suitable GPU!");
             }
+
+            m_physicalDevice = selectedPhysicalDevice;
         }
 
         void createLogicalDevice() {
@@ -422,17 +447,19 @@ class App {
                 .ppEnabledLayerNames = enabledLayerNames.data(),
             };
 
-            const auto result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
+            auto device = VkDevice {};
+            const auto result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &device);
             if (result != VK_SUCCESS) {
                 throw std::runtime_error("failed to create logical device!");
             }
 
             auto graphicsQueue = VkQueue {};
-            vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+            vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
             
             auto presentQueue = VkQueue {};
-            vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &presentQueue);
+            vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 
+            m_device = device;
             m_graphicsQueue = graphicsQueue;
             m_presentQueue = presentQueue;
         }
@@ -613,12 +640,12 @@ class App {
             m_swapChainImageViews = std::move(swapChainImageViews);
         }
 
-        void initWindow() {
-            glfwInit();
+        void createWindow() {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+            auto window = glfwCreateWindow(WIDTH, HEIGHT, "Hello, Window!", nullptr, nullptr);
 
-            m_window = glfwCreateWindow(WIDTH, HEIGHT, "Hello, Window!", nullptr, nullptr);
+            m_window = window;
         }
 
         void initVulkan() {
