@@ -79,12 +79,17 @@ struct SwapChainSupportDetails {
 
 class App {
     public:
+        explicit App() = default;
+
+        ~App() {
+            this->cleanup();
+        }
+
         void run() {
             this->createGLFWLibrary();
             this->createWindow();
             this->initVulkan();
             this->mainLoop();
-            this->cleanup();
         }
     private:
         GLFWwindow* m_window;
